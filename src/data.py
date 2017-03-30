@@ -36,22 +36,6 @@ class DataContainer(object):
 	def _cleanstrarray(self,series):
 		return series.apply(striphtml).apply(remove_ascii).apply(depunctualize).apply(replace_char).apply(to_unicode)
 
-	def get_char_features(self, remove_stopwords = False, suffix = ''):
-		return feature_extraction.char_features(self, remove_stopwords = remove_stopwords, suffix = suffix)
-
-	def get_ngram_features(self, n = 1, remove_stopwords = True, suffix = ''):
-		return feature_extraction.ngram_features(self, n = n, remove_stopwords = remove_stopwords, suffix = suffix)
-
-	def get_fuzzy_features(self,remove_stopwords = True, suffix = ''):
-		return feature_extraction.fuzzy_features(self, remove_stopwords = remove_stopwords, suffix = suffix)
-
-	def get_vector_features(self, vectorizer = None, n_principle_directions = 10, suffix = ''):
-		n = n_principle_directions
-		return feature_extraction.vector_features(self, vectorizer = vectorizer, n_principle_directions = n, suffix = suffix)
-
-	def get_pos_features(self, tagger = None):
-		return feature_extraction.pos_features(self, tagger = tagger)
-
 
 def clean(dataframe):
 	''' 

@@ -2,92 +2,148 @@
 from exceptions import *
 import numpy as np
 import pandas as pd
+from feature_utilities import *
 
 
-def char_features(dc, remove_stopwords = False, suffix = ''):
-	from data import DataContainer
-	import charfeatures as cf
-	from ngramfeatures import removestopwords
-
-	if isinstance(dc, DataContainer):
-		## Check for needed columns
-
-		if remove_stopwords:
-			#print 'removing stopwords'
-			question1 = dc.question1.apply(removestopwords)
-			question2 = dc.question2.apply(removestopwords)
+class FeatureSet(object):
+	def __init__(self, container):
+		from data import DataContainer
+		if isinstance(container, DataContainer):
+			self.q1 = container.question1
+			self.q2 = container.question2
+			self.feat = container.features
 		else:
-			question1 = dc.question1
-			question2 = dc.question2
+			raise InputError('{}'.format(container), 'object is not a Data Container')
 
-		dc.features['len_q1'+suffix] = np.array([cf.qlength(x) for x in question1])
-		dc.features['len_q2'+suffix] = np.array([cf.qlength(x) for x in question2])
-		dc.features['len_diff'+suffix] = (dc.features['len_q1'+suffix] - dc.features['len_q2'+suffix]).apply(abs)
-		dc.features['are_equiv'+suffix] = question1.replace(' ', '') == question2.replace(' ', '')
 
-		dc.features['z_match_ratio'+suffix] = np.array([cf.diff_ratios(x,y) for (x,y) in zip(question1, question2)])
-def ngram_features(dc, n = 1, remove_stopwords = True, suffix = ''):
-	from data import DataContainer
-	import ngramfeatures as nf
+class CharFeatures(FeatureSet):
+	def __init__(self, container, remove_stopwords = False, prefix = ''):
+		'''
+		Initializes a character features instance. Options are:
 
-	if isinstance(dc, DataContainer):
-		## Check for needed columns
+		remove_stopwords:	Whether to keep the stopwords or remove them. Stop list currently hardcoded
+							at src/feature_utilities
 
+		prefix:		Something to prefix the feature names with, if you run multiple instances of this 
+					class on your data.	
+		'''
+		super(CharFeatures).__init__(self, container)
 		if remove_stopwords:
-			#print 'removing stopwords'
-			question1 = dc.question1.apply(nf.removestopwords)
-			question2 = dc.question2.apply(nf.removestopwords)
-		else:
-			question1 = dc.question1
-			question2 = dc.question2
-		tfidf = nf.TFIDF(question1.tolist() + question2.tolist(), n = n)
-		#print 'preparing ngrams'
-		token1 = question1.apply(nf.tokenize)
-		token2 = question2.apply(nf.tokenize)
-		if n > 1:
-			ngrams1 = token1.apply(nf.get_ngrams, n = n)
-			ngrams2 = token2.apply(nf.get_ngrams, n = n)
-		if n < 1:
-			raise InputError('n', 'n must be int >= 1')
-		if n == 1:
-			ngrams1 = token1
-			ngrams2 = token2
-
-
-
-		#print 'saving features'
-		dc.features['num_{0}grams_Q1'.format(n)+suffix] = ngrams1.apply(nf.questionlength, unique = False)
-		dc.features['num_{0}grams_Q2'.format(n)+suffix] = ngrams2.apply(nf.questionlength, unique = False)
-
-		dc.features['delta_num_{0}grams'.format(n)+suffix] = abs(
-				dc.features['num_{0}grams_Q1'.format(n)+suffix].values -
-				dc.features['num_{0}grams_Q2'.format(n)+suffix].values
-			)
-		dc.features['num_unique_{0}grams_Q1'.format(n)+suffix] = ngrams1.apply(nf.questionlength, unique = True)
-		dc.features['num_unique_{0}grams_Q2'.format(n)+suffix] = ngrams2.apply(nf.questionlength, unique = True)
-
-		dc.features['delta_unique_{0}grams'.format(n)+suffix] = abs(
-				dc.features['num_unique_{0}grams_Q1'.format(n)+suffix].values -
-				dc.features['num_{0}grams_Q2'.format(n)+suffix].values
-			)
-
-		dc.features['num_common_{0}grams'.format(n)+suffix] = np.array([len(nf.common_ngrams(x,y)) for x,y in zip(ngrams1, ngrams2)])
-
-		dc.features['frac_common_{0}grams'.format(n)+suffix] = (
-			2 * dc.features['num_common_{0}grams'.format(n)+suffix]/(
-				dc.features['num_unique_{0}grams_Q1'.format(n)+suffix] + 
-				dc.features['num_unique_{0}grams_Q2'.format(n)+suffix]
+			self.q1 = self.q1.apply(removestopwords)
+			self.q2 = self.q2.apply(removestopwords)
+		self.prefix = prefix
+		def __call__(self):
+			'''
+			returns character features. They are:
+			1. string length of question 1 (without spaces)
+			2. string length of quesetion 2 (without spaces)
+			3. length difference between the two strings
+			4. Whether the questions are exactly equivalent after removing whitespace and lowercasting
+			5. total length of common string of q1 and q2
+			6. ratio of similar to dissimilar portions of the string.
+			'''
+			self.feat[self.prefix + 'len_q1'] = self.q1.apply(stringlength)
+			self.feat[self.prefix + 'len_q2'] = self.q2.apply(stringlength)
+			self.feat[self.prefix + 'len_diff'] = (
+				self.feat[self.prefix + 'len_q1'] 
+				- self.feat[self.prefix + 'len_q2']
+				).apply(abs)
+			self.feat[self.prefix+'are_equiv'] = (
+				self.q1.apply(lambda x: x.replace(' ', '').lower())
+				== self.q2.apply(lambda x: x.replace(' ', '').lower())
 				)
-			)
-		dc.features['weighted_frac_common_{0}grams'.format(n) + suffix] = np.array(
-				[nf.common_weighted_fraction(x,y, tfidf = tfidf) for x,y in zip(ngrams1, ngrams2)]
-			)
+			questiontuples = zip(
+				self.q1.apply(lambda x: x.replace(' ', '').lower()), 
+				self.q2.apply(lambda x: x.replace(' ', '').lower())
+				)
+			self.feat[self.prefix+'match_len'] = np.array([common_string_length(x,y) for x,y in questiontuples])
+			self.feat[self.prefix+'char_match_ratio'] = np.array(
+				[diff_ratio(x,y) for x,y in zip(self.q1.values, self.q2.values)]
+				)
+			return self.feat
 
-		return dc
-	else:
-		raise InputError('dc', 'input object is not a Data Container')
+
+class NGramFeatures(FeatureSet):
+	def __init__(self, container, idf_encoder = None, n = 1, remove_stopwords = False, prefix = ''):
+		'''
+		Initializes an ngram features instance. Options are:
+
+		idf_encoder:	IDFWeights method that computes ngram weights. If none, builds one from 
+						questions in DataContainer. If False, weights everything equally.
+
+		n:	Size of the ngrams
+
+		remove_stopwords:	Whether to keep the stopwords or remove them. Stop list currently hardcoded
+							at src/feature_utilities
+
+		prefix:		Something to prefix the feature names with, if you run multiple instances of this 
+					class on your data.
+		'''
+		from encoders import IDFWeights
+		from nltk import ngrams, word_tokenize
+		self.weight_words = True
+		super(CharFeatures).__init__(self, container)
+		if remove_stopwords:
+			self.q1 = self.q1.apply(removestopwords)
+			self.q2 = self.q2.apply(removestopwords)
+		self.prefix = prefix
+		self.n = n
+		if idf_encoder is None:
+			self.idf_encoder = IDFWeights(corpus = self.q1.tolist() + self.q2.tolist(), n = n)
+		elif isinstance(idf_encoder, IDFWeights):
+			self.idf_encoder = idf_encoder
+		elif not idf_encoder:
+			self.weight_words = False
+		else:
+			raise InputError({}.format(idf_encoder), 'object is not an IDF encoder')
+		if self.n == 1:
+			self.q1 = self.q1.apply(lambda x: word_tokenize(x)).values
+			self.q2 = self.q2.apply(lambda x: word_tokenize(x)).values
+		if self.n > 1:
+			self.q1 = self.q1.apply(lambda x: ngrams(word_tokenize(x), n = self.n)).values
+			self.q2 = self.q2.apply(lambda x: ngrams(word_tokenize(x), n = self.n)).values
+
+	def __call__(self):
+		'''
+		returns Ngram features. They are:
+		1. Number of ngrams in question 1
+		2. number of ngrams in question 2
+		3. number of unique ngrams in question 1
+		4. number of unique ngrams in question 2
+		5. number of unique common ngrams between Q1 and Q2
+		6. ratio of common to total unique ngrams
+		'''
+		### ngram counts
+		if self.weight_words:
+			q1word_count = [sum([self.idf_encoder(w) for w in x]) for x in self.q1]
+			q2word_count = [sum([self.idf_encoder(w) for w in x]) for x in self.q2]
+			q1unique_count = [sum(set(self.idf_encoder(w) for w in x)) for x in self.q1]
+			q2unique_count = [sum(set(self.idf_encoder(w) for w in x)) for x in self.q2]
+			common_words_count = [sum(self.idf_encoder(word) for word in common_ngrams(x,y)) for x,y in zip(ngrams1, ngrams2)]
+		else:
+			q1word_count = [len(x) for x in self.q1]
+			q2word_count = [len(x) for x in self.q2]
+			q1unique_count = [len(set(x)) for x in self.q1]
+			q2unique_count = [len(set(x)) for x in self.q2]
+			common_words_count = [len(common_ngrams(x,y)) for x,y in zip(ngrams1, ngrams2)]
 
 
+		self.feat[self.prefix + 'num{}gramsQ1'.format(self.n)] = q1word_count
+		self.feat[self.prefix + 'num{}gramsQ2'.format(self.n)] = q2word_count
+		self.feat[self.prefix + 'num_unique{}gramsQ1'.format(self.n)] = q1unique_count
+		self.feat[self.prefix + 'num_unique{}gramsQ2'.format(self.n)] = q2unique_count
+		self.feat[self.prefix + 'common{}grams'.format(self.n)] = common_words_count
+		self.feat[self.prefix + 'common{}grams_ratio'.format(self.n)] = 2*common_words_count/(q1unique_count + q2unique_count)
+
+
+		return self.feat
+
+
+
+### Unit tests
+if __name__ = '__main__':
+	pass
+#### TO DO BELOW
 
 
 def fuzzy_features(dc, remove_stopwords = True, suffix = ''):
