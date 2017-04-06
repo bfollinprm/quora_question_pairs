@@ -5,6 +5,13 @@ import src.model as model
 import os
 import os.path as osp
 
+
+
+
+import src.data as data 
+
+train = DataContainer(osp.join(parentdir, 'data/train.csv'))
+
 def get_data(files = None):
 	if files is None:
 		parentdir = osp.join(osp.abspath(osp.join(os.getcwd(), os.pardir)), 'QuoraQuestionPairs')
@@ -25,9 +32,20 @@ def get_data(files = None):
 
 	return out
 
-def get_features(dc, pos_tagger = None, quoraword2vec = None):
 
+
+
+
+def get_features(dc, pos_tagger = None, quoraword2vec = None):
+	from feature_extration import *
 	print 'getting character features'
+	dc.features = CharFeatures(dc, remove_stopwords = False, prefix = 'stops_')
+	dc.features = CharFeatures(dc, remove_stopwords = True)
+
+	print 'getting fuzzy comparison features'
+	dc.features = NGramFeatures(dc, n = n, remove_stopwords = False, prefix = stops_)
+	dc.features = NGramFeatures(dc, n = n, remove_stopwords = True)
+	dc.features = NGramFeatures(dc, n = n, remove_stopwords = False, )
 	dc.get_char_features(remove_stopwords = False, suffix = '_stops')
 	dc.get_char_features(remove_stopwords = True)
 

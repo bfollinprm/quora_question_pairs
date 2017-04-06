@@ -31,6 +31,7 @@ class DataContainer(object):
 	def clean_questions(self):
 		self.question1 = self._cleanstrarray(self.question1)
 		self.question2 = self._cleanstrarray(self.question2)
+		return self
 
 
 	def _cleanstrarray(self,series):

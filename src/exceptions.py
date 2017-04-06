@@ -3,7 +3,8 @@
 #### Exception handling
 class Error(Exception):
 	''' Base class for exceptions in this module '''
-	pass
+	def __init__(self):
+		pass
 
 class InputError(Error):
 	''' Exception raised when function is called with incorrect errors in input

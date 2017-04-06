@@ -12,60 +12,60 @@ from gensim.models.word2vec import LineSentence
 from scipy.misc import imresize
 #from numpy.linalg import dot
 
-class QuoraWord2Vec(object):
-	def __init__(self, binaryfile = None, corpus = None):
-		if binaryfile is None:
-			try: 
-				parentdir = osp.join(osp.abspath(osp.join(os.getcwd(), os.pardir)), 'QuoraQuestionPairs')
-				self.model = Word2Vec.load(osp.join(parentdir, 'data','QuoraQuestions.bin'))
-			except:
-				try:
-					print 'building word2vecs from Quora Questions'
-					corpus = [s.split() for s in corpus if isinstance(s, unicode)]
-					print corpus
-					self.model = Word2Vec(corpus, size = 300, window = 5, min_count = 1, workers = 4, iter = 10)
-					self.model.train(corpus)
-					parentdir = osp.join(osp.abspath(osp.join(os.getcwd(), os.pardir)), 'QuoraQuestionPairs')
-					self.model.save(osp.join(parentdir, 'data','QuoraQuestions.bin'))
-				except ImportError:
-					raise ImportError('model', 'no word2vec file found')
-		elif isinstance(binaryfile, str):
-			try:
-				self.model = Word2Vec.load(osp.join(binaryfile))
-			except:
+# class QuoraWord2Vec(object):
+# 	def __init__(self, binaryfile = None, corpus = None):
+# 		if binaryfile is None:
+# 			try: 
+# 				parentdir = osp.join(osp.abspath(osp.join(os.getcwd(), os.pardir)), 'QuoraQuestionPairs')
+# 				self.model = Word2Vec.load(osp.join(parentdir, 'data','QuoraQuestions.bin'))
+# 			except:
+# 				try:
+# 					print 'building word2vecs from Quora Questions'
+# 					corpus = [s.split() for s in corpus if isinstance(s, unicode)]
+# 					print corpus
+# 					self.model = Word2Vec(corpus, size = 300, window = 5, min_count = 1, workers = 4, iter = 10)
+# 					self.model.train(corpus)
+# 					parentdir = osp.join(osp.abspath(osp.join(os.getcwd(), os.pardir)), 'QuoraQuestionPairs')
+# 					self.model.save(osp.join(parentdir, 'data','QuoraQuestions.bin'))
+# 				except ImportError:
+# 					raise ImportError('model', 'no word2vec file found')
+# 		elif isinstance(binaryfile, str):
+# 			try:
+# 				self.model = Word2Vec.load(osp.join(binaryfile))
+# 			except:
 
-				raise ImportError('model', 'no word2vec file found @ %s'%binaryfile)
-		self.word_vectors = self.model.wv
-	def __call__(self, word):
-		try:
-			vec = array(self.word_vectors[word])
+# 				raise ImportError('model', 'no word2vec file found @ %s'%binaryfile)
+# 		self.word_vectors = self.model.wv
+# 	def __call__(self, word):
+# 		try:
+# 			vec = array(self.word_vectors[word])
 
-			return vec/sqrt(dot(vec, vec))
-		except:
-			#print 'word {} not in vocabulary, returning null vector'.format(word)
-			return zeros(300)
+# 			return vec/sqrt(dot(vec, vec))
+# 		except:
+# 			#print 'word {} not in vocabulary, returning null vector'.format(word)
+# 			return zeros(300)
 
-class GoogleWord2Vec(object):
-	def __init__(self, binaryfile = None):
-		if binaryfile is None:
-			parentdir = osp.join(osp.abspath(osp.join(os.getcwd(), os.pardir)), 'QuoraQuestionPairs')
-			try:
-				self.word_vectors = KeyedVectors.load_word2vec_format(osp.join(parentdir, 'data','GoogleNews.bin'), binary = True)
-			except:
-				raise ImportError('model', 'no word2vec file found @ %s'%osp.join(parentdir, 'data','GoogleNews.bin'))
-		else:
-			try:
-				self.word_vectors = KeyedVectors.load_word2vec_format(binaryfile, binary = True)
-			except:
-				raise ImportError('model', 'no word2vec file found @ %s'%binaryfile)
+# class GoogleWord2Vec(object):
+# 	def __init__(self, binaryfile = None):
+# 		if binaryfile is None:
+# 			parentdir = osp.join(osp.abspath(osp.join(os.getcwd(), os.pardir)), 'QuoraQuestionPairs')
+# 			try:
+# 				self.word_vectors = KeyedVectors.load_word2vec_format(osp.join(parentdir, 'data','GoogleNews.bin'), binary = True)
+# 			except:
+# 				raise ImportError('model', 'no word2vec file found @ %s'%osp.join(parentdir, 'data','GoogleNews.bin'))
+# 		else:
+# 			try:
+# 				self.word_vectors = KeyedVectors.load_word2vec_format(binaryfile, binary = True)
+# 			except:
+# 				raise ImportError('model', 'no word2vec file found @ %s'%binaryfile)
 
-	def __call__(self, word):
-		try:
-			vec = array(self.word_vectors[word])
-			return vec/sqrt(dot(vec, vec))
-		except:
-			# word not in vocabulary, returning null vector
-			return zeros(300)
+# 	def __call__(self, word):
+# 		try:
+# 			vec = array(self.word_vectors[word])
+# 			return vec/sqrt(dot(vec, vec))
+# 		except:
+# 			# word not in vocabulary, returning null vector
+# 			return zeros(300)
 
 
 
